@@ -62,11 +62,6 @@ let printState {Snake=snake;Grid=grid} =
         printf "-"
         
 let checkKeyPress = System.Windows.Input.Keyboard.IsKeyDown
-        
-let grid = { Width = 20; Height = 10 }
-let initialSnake = { Length = 3; Position = [{ X = 1; Y = 1 }; { X = 1; Y = 2 }; { X = 1; Y = 3 }] }
-
-let initialState = { Snake = initialSnake; Grid = grid; CurrentDirection = Right }
 
 let rec gameLoop state =
     // Delay for a short period to simulate game tick
@@ -76,7 +71,6 @@ let rec gameLoop state =
     printState state
     printfn ""
     printfn "Enter direction (w/a/s/d) or 'q' to quit:"
-    
     
     let userInput =
         if checkKeyPress System.Windows.Input.Key.W then DirectionChange Up
@@ -92,6 +86,10 @@ let rec gameLoop state =
             gameLoop newState
     with
     | ex -> printfn "Error: %s" ex.Message
+    
+let grid = { Width = 20; Height = 10 }
+let initialSnake = { Length = 3; Position = [{ X = 1; Y = 1 }; { X = 1; Y = 2 }; { X = 1; Y = 3 }] }
+let initialState = { Snake = initialSnake; Grid = grid; CurrentDirection = Right }
     
 // we need sta thread here to use WPF input
 [<EntryPoint>]
