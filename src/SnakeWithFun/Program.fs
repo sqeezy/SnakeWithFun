@@ -13,7 +13,7 @@ let wrappedPositionUpdate (pos: Position) (grid: Grid) =
     let wrappedY = if pos.Y < 0 then grid.Height - 1 elif pos.Y >= grid.Height then 0 else pos.Y
     { X = wrappedX; Y = wrappedY }
 
-let moveSnake (snake: Snake) (direction: Direction) (grid : Grid)=
+let moveSnake (snake: Snake) (direction: Direction) (grid : Grid) =
     let head = List.head snake.Position
     let newHead =
         match direction with
@@ -25,10 +25,15 @@ let moveSnake (snake: Snake) (direction: Direction) (grid : Grid)=
     let newPosition = newHead :: List.take (snake.Length - 1) snake.Position |> List.map (fun pos -> wrappedPositionUpdate pos grid)
     { snake with Position = newPosition }
     
+let updatedDirection (current: Direction) (userRequest: Direction) =
+    match (current, userRequest) with
+    | (Up, Down) | (Down, Up) | (Left, Right) | (Right, Left) -> current // No change if opposite direction requested
+    | (_, _) -> userRequest // Update to new direction if valid
+    
 let gameTick (state: GameState) (input: UserInput) =
     let newDirection =
         match input with
-        | DirectionChange dir -> dir
+        | DirectionChange dir -> updatedDirection state.CurrentDirection dir
         | Idle -> state.CurrentDirection
         | Quit -> failwith "Game Over"
     
