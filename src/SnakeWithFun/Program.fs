@@ -41,19 +41,23 @@ let updatedDirection (current: Direction) (userRequest: Direction) =
     | _, _ -> userRequest // Update to new direction if valid
 
 let findNewFoodPosition (snake: Snake) (grid: Grid) =
-    let random = System.Random()
+    let random = System.Random.Shared
 
-    let rec generatePosition () =
-        let pos =
-            { X = random.Next(0, grid.Width)
-              Y = random.Next(0, grid.Height) }
+    let gridPositions =
+        [ for x in 0 .. grid.Width - 1 do
+              for y in 0 .. grid.Height - 1 do
+                  yield { X = x; Y = y } ]
 
-        if List.exists (fun sPos -> sPos.X = pos.X && sPos.Y = pos.Y) snake.Position then
-            generatePosition () // Regenerate if position is occupied by the snake
-        else
-            pos
+    let snakePositions = snake.Position |> Set.ofList
 
-    generatePosition ()
+    let availablePositions =
+        gridPositions |> List.filter (fun pos -> not (Set.contains pos snakePositions))
+
+    if availablePositions.IsEmpty then
+        failwith "you should have won the game already"
+
+    let randomIndex = random.Next(availablePositions.Length)
+    availablePositions[randomIndex]
 
 let gameTick (state: GameState) (input: UserInput) =
     let newDirection =
