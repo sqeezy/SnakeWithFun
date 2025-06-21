@@ -15,8 +15,8 @@ let wrappedPositionUpdate (pos: Position) (grid: Grid) =
 
 let updatedDirection (current: Direction) (userRequest: Direction) =
     match (current, userRequest) with
-    | (Up, Down) | (Down, Up) | (Left, Right) | (Right, Left) -> current // No change if opposite direction requested
-    | (_, _) -> userRequest // Update to new direction if valid
+    | Up, Down | Down, Up | Left, Right | Right, Left -> current // No change if opposite direction requested
+    | _, _ -> userRequest // Update to new direction if valid
     
 let findNewFoodPosition (snake: Snake) (grid: Grid) =
     let random = System.Random()
@@ -44,7 +44,7 @@ let gameTick (state: GameState) (input: UserInput) =
         | Left -> { X = head.X - 1; Y = head.Y }
         | Right -> { X = head.X + 1; Y = head.Y }
     
-    let (eatingManipulation,newFoodPosition) =
+    let eatingManipulation,newFoodPosition =
         if newHead = state.FoodPosition then
             // If the snake eats food, increase its length
             (0, findNewFoodPosition snake state.Grid)
