@@ -263,7 +263,7 @@ let initialState =
     { Snake = initialSnake
       Grid = grid
       CurrentDirection = Right
-      FoodPosition = { X = 2; Y = 2 }
+      FoodPosition = findNewFoodPosition initialSnake grid
       Speed = 1.0 }
 
 // we need sta thread here to use WPF input
