@@ -1,4 +1,7 @@
-﻿type Position = { X: int; Y: int }
+﻿open System
+open System.Windows.Input
+
+type Position = { X: int; Y: int }
 type Snake = { Position: Position list }
 type Grid = { Width: int; Height: int }
 
@@ -153,30 +156,30 @@ let printState
     for _ in 0 .. grid.Width + 1 do
         printf "-"
 
-let checkKeyPress = System.Windows.Input.Keyboard.IsKeyDown
+let checkKeyPress = Keyboard.IsKeyDown
 
 let rec gameLoop state =
-    // Delay for a short period to simulate game tick
-    System.Threading.Thread.Sleep(250)
-    // Clear the console
-    System.Console.Clear()
+    Console.Clear()
     printState state
     printfn ""
     printfn "Enter direction (w/a/s/d) or 'q' to quit:"
 
+    let startTime = DateTime.Now
+    let mutable lastPressedKey  = ConsoleKey.None
+    // while 250 milliseconds have not passed
+    while (DateTime.Now - startTime).TotalMilliseconds < 250 do
+        System.Threading.Thread.Sleep(1)
+        if Console.KeyAvailable then
+            lastPressedKey <- Console.ReadKey(true).Key
+
     let userInput =
-        if checkKeyPress System.Windows.Input.Key.W then
-            DirectionChange Up
-        elif checkKeyPress System.Windows.Input.Key.S then
-            DirectionChange Down
-        elif checkKeyPress System.Windows.Input.Key.A then
-            DirectionChange Left
-        elif checkKeyPress System.Windows.Input.Key.D then
-            DirectionChange Right
-        elif checkKeyPress System.Windows.Input.Key.Q then
-            Quit
-        else
-            Idle
+        match lastPressedKey with
+        | ConsoleKey.W -> DirectionChange Up
+        | ConsoleKey.S -> DirectionChange Down
+        | ConsoleKey.A -> DirectionChange Left
+        | ConsoleKey.D -> DirectionChange Right
+        | ConsoleKey.Q -> Quit
+        | _ -> Idle
 
     try
         let newState = gameTick state userInput
