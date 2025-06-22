@@ -22,6 +22,11 @@ type UserInput =
     | Idle
     | Quit
 
+type MoveResult =
+    | SnakeMoved of Position
+    | SnakeEatenFood of Position
+    | Collision
+
 let wrappedPositionUpdate (pos: Position) (grid: Grid) =
     let wrappedX =
         if pos.X < 0 then grid.Width - 1
@@ -36,7 +41,7 @@ let wrappedPositionUpdate (pos: Position) (grid: Grid) =
     { X = wrappedX; Y = wrappedY }
 
 let updatedDirection (current: Direction) (userRequest: Direction) =
-    match (current, userRequest) with
+    match current, userRequest with
     | Up, Down
     | Down, Up
     | Left, Right
@@ -44,7 +49,7 @@ let updatedDirection (current: Direction) (userRequest: Direction) =
     | _, _ -> userRequest // Update to new direction if valid
 
 let findNewFoodPosition (snake: Snake) (grid: Grid) =
-    let random = System.Random.Shared
+    let random = Random.Shared
 
     let gridPositions =
         [ for x in 0 .. grid.Width - 1 do
@@ -59,13 +64,8 @@ let findNewFoodPosition (snake: Snake) (grid: Grid) =
     if availablePositions.IsEmpty then
         failwith "you should have won the game already"
 
-    let randomIndex = random.Next(availablePositions.Length)
+    let randomIndex = random.Next availablePositions.Length
     availablePositions[randomIndex]
-
-type MoveResult =
-    | SnakeMoved of Position
-    | SnakeEatenFood of Position
-    | Collision
 
 let calculateMoveResult (state: GameState) (newHead: Position) =
     let snake = state.Snake
@@ -216,7 +216,7 @@ let initialState =
 
 // we need sta thread here to use WPF input
 [<EntryPoint>]
-[<System.STAThread>]
+[<STAThread>]
 let main _ =
     gameLoop initialState
     0
