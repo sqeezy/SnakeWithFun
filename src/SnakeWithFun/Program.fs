@@ -71,7 +71,7 @@ let calculateMoveResult (state: GameState) (newHead: Position) =
     let snake = state.Snake
 
     // Check if the new head position collides with the snake's body
-    if List.exists (fun pos -> pos = newHead) snake.Position then
+    if List.exists (fun pos -> pos = newHead) (snake.Position |> List.take (snake.Position.Length-1)) then
         Collision
     else if newHead = state.FoodPosition then
         SnakeEatenFood newHead
@@ -190,7 +190,7 @@ let rec gameLoop state =
     with ex ->
         printfn "Error: %s" ex.Message
 
-let grid = { Width = 20; Height = 10 }
+let grid = { Width = 5; Height = 5 }
 
 let initialSnake =
     { Position = [ { X = 1; Y = 1 }; { X = 1; Y = 2 }; { X = 1; Y = 3 } ] }
@@ -199,7 +199,7 @@ let initialState =
     { Snake = initialSnake
       Grid = grid
       CurrentDirection = Right
-      FoodPosition = { X = 5; Y = 5 } }
+      FoodPosition = { X = 2; Y = 2 } }
 
 // we need sta thread here to use WPF input
 [<EntryPoint>]
