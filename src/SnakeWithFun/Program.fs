@@ -1,5 +1,4 @@
 ﻿open System
-open System.Windows.Input
 open Spectre.Console
 
 type Position = { X: int; Y: int }
