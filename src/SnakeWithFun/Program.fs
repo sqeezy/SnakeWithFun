@@ -71,58 +71,70 @@ let calculateMoveResult (state: GameState) (newHead: Position) =
     let snake = state.Snake
 
     // Check if the new head position collides with the snake's body
-    if List.exists (fun pos -> pos = newHead) (snake.Position |> List.take (snake.Position.Length-1)) then
+    if List.exists (fun pos -> pos = newHead) (snake.Position |> List.take (snake.Position.Length - 1)) then
         Collision
     else if newHead = state.FoodPosition then
         SnakeEatenFood newHead
     else
         SnakeMoved newHead
 
-let gameTick (state: GameState) (input: UserInput) =
+let updatePositions snake grid nextHead foodWasEaten =
+    let eatingManipulation = if foodWasEaten then 0 else 1
+
+    nextHead
+    :: List.take (snake.Position.Length - eatingManipulation) snake.Position
+    |> List.map (fun pos -> wrappedPositionUpdate pos grid)
+
+let processUserInput userInput state =
     let newDirection =
-        match input with
+        match userInput with
         | DirectionChange dir -> updatedDirection state.CurrentDirection dir
         | Idle -> state.CurrentDirection
         | Quit -> failwith "Game Over"
 
+    { state with
+        CurrentDirection = newDirection }
+
+let previewMove state =
     let snake = state.Snake
     let head = List.head snake.Position
 
     let nextHead =
-        match newDirection with
+        match state.CurrentDirection with
         | Up -> { X = head.X; Y = head.Y - 1 }
         | Down -> { X = head.X; Y = head.Y + 1 }
         | Left -> { X = head.X - 1; Y = head.Y }
         | Right -> { X = head.X + 1; Y = head.Y }
 
+    state, nextHead
+
+let resolveMove state nextHead =
     let moveResult = calculateMoveResult state nextHead
-
-    let updatePositions snake grid nextHead foodWasEaten =
-        let eatingManipulation = if foodWasEaten then 0 else 1
-
-        nextHead
-        :: List.take (snake.Position.Length - eatingManipulation) snake.Position
-        |> List.map (fun pos -> wrappedPositionUpdate pos grid)
 
     match moveResult with
     | Collision -> None
     | SnakeMoved nextHead ->
-        let newPosition = updatePositions snake state.Grid nextHead false
-        let newSnake = { snake with Position = newPosition }
+        let newPosition = updatePositions state.Snake state.Grid nextHead false
 
-        { state with
-            Snake = newSnake
-            CurrentDirection = newDirection }
-        |> Some
+        let newSnake =
+            { state.Snake with
+                Position = newPosition }
+
+        Some { state with Snake = newSnake }
     | SnakeEatenFood nextHead ->
-        let newPosition = updatePositions snake state.Grid nextHead true
-        let newSnake = { snake with Position = newPosition }
+        let newPosition = updatePositions state.Snake state.Grid nextHead true
 
-        { state with
-            Snake = newSnake
-            CurrentDirection = newDirection
-            FoodPosition = findNewFoodPosition newSnake state.Grid }
-        |> Some
+        let newSnake =
+            { state.Snake with
+                Position = newPosition }
+
+        Some
+            { state with
+                Snake = newSnake
+                FoodPosition = findNewFoodPosition newSnake state.Grid }
+
+let gameTick (state: GameState) (input: UserInput) =
+    state |> processUserInput input |> previewMove ||> resolveMove
 
 let printState
     { Snake = snake
@@ -165,10 +177,11 @@ let rec gameLoop state =
     printfn "Enter direction (w/a/s/d) or 'q' to quit:"
 
     let startTime = DateTime.Now
-    let mutable lastPressedKey  = ConsoleKey.None
+    let mutable lastPressedKey = ConsoleKey.None
     // while 250 milliseconds have not passed
     while (DateTime.Now - startTime).TotalMilliseconds < 250 do
         System.Threading.Thread.Sleep(1)
+
         if Console.KeyAvailable then
             lastPressedKey <- Console.ReadKey(true).Key
 
