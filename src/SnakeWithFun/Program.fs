@@ -47,7 +47,7 @@ let updatedDirection (current: Direction) (userRequest: Direction) =
     | Down, Up
     | Left, Right
     | Right, Left -> current // No change if opposite direction requested
-    | _, _ -> userRequest // Update to new direction if valid
+    | _ -> userRequest // Update to new direction if valid
 
 let findNewFoodPosition (snake: Snake) (grid: Grid) =
     let random = Random.Shared
