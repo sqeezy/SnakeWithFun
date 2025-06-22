@@ -29,7 +29,7 @@ type MoveResult =
     | SnakeEatenFood of Position
     | Collision
 
-let wrappedPositionUpdate (pos: Position) (grid: Grid) =
+let wrappedPositionUpdate (grid: Grid) (pos: Position) =
     let wrappedX =
         if pos.X < 0 then grid.Width - 1
         elif pos.X >= grid.Width then 0
@@ -85,7 +85,7 @@ let updatePositions snake grid nextHead foodWasEaten =
 
     nextHead
     :: List.take (snake.Position.Length - eatingManipulation) snake.Position
-    |> List.map (fun pos -> wrappedPositionUpdate pos grid)
+    |> List.map (wrappedPositionUpdate grid)
 
 let processUserInput userInput state =
     let newDirection =
@@ -107,6 +107,7 @@ let previewMove state =
         | Down -> { X = head.X; Y = head.Y + 1 }
         | Left -> { X = head.X - 1; Y = head.Y }
         | Right -> { X = head.X + 1; Y = head.Y }
+        |> wrappedPositionUpdate state.Grid
 
     state, nextHead
 
@@ -151,7 +152,9 @@ let gameTick (state: GameState) (input: UserInput) =
     state |> updateSpeed |> processUserInput input |> previewMove ||> resolveMove
 
 type SpectreConsoleAppState =
-    { GameState: GameState; Canvas: Canvas }
+    { GameState: GameState
+      Canvas: Canvas
+      GuiRoot: Layout }
 
 let initCanvas width height =
     let canvas = Canvas(width + 2, height + 2)
@@ -168,11 +171,19 @@ let initCanvas width height =
 
 let initAppState gameState =
     let canvas = initCanvas gameState.Grid.Width gameState.Grid.Height
+    let guiRoot = 
+        Layout()
+            .SplitRows(
+                Layout("Top").MinimumSize(canvas.Height),
+                Layout("Bottom"))
+
+    guiRoot["Top"].Update(canvas) |> ignore
 
     { GameState = gameState
-      Canvas = canvas }
+      Canvas = canvas
+      GuiRoot = guiRoot }
 
-let updateCanvas appState (ctx: LiveDisplayContext) =
+let updateCanvas appState =
     let { Snake = snake
           Grid = grid
           FoodPosition = foodPosition } =
@@ -190,11 +201,28 @@ let updateCanvas appState (ctx: LiveDisplayContext) =
 
     // Draw the food
     canvas.SetPixel(foodPosition.X + 1, foodPosition.Y + 1, Color.Red) |> ignore
+
+let updateDataPane appState  =
+    appState.GuiRoot["Bottom"].Update(
+        Panel(
+            Table()
+                .AddColumn("Property")
+                .AddColumn("Value")
+                .AddRow("Snake Length", string (List.length appState.GameState.Snake.Position))
+                .AddRow("Food Position", sprintf "(%d, %d)" appState.GameState.FoodPosition.X appState.GameState.FoodPosition.Y)
+                .AddRow("Speed", string appState.GameState.Speed)
+        )
+    ) |> ignore
+
+let updateGui appState (ctx: LiveDisplayContext) =
+    updateCanvas appState
+    updateDataPane appState
+
     ctx.Refresh()
 
 let rec gameLoop appState ctx =
 
-    updateCanvas appState ctx
+    updateGui appState ctx
 
     let startTime = DateTime.Now
     let mutable lastPressedKey = ConsoleKey.None
@@ -242,6 +270,6 @@ let initialState =
 [<STAThread>]
 let main _ =
     let appState = initAppState initialState
-    AnsiConsole.Live(appState.Canvas).Start(fun ctx -> gameLoop appState ctx)
+    AnsiConsole.Live(appState.GuiRoot).Start(fun ctx -> gameLoop appState ctx)
 
     0
