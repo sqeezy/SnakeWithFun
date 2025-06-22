@@ -137,19 +137,26 @@ let resolveMove state nextHead =
 let gameTick (state: GameState) (input: UserInput) =
     state |> processUserInput input |> previewMove ||> resolveMove
 
-let printState state =
-    let { Snake = snake
-          Grid = grid
-          FoodPosition = foodPosition } =
-        state
+let initCanvas width height =
+    let canvas = Canvas(width + 2, height + 2)
 
-    let canvas = Canvas(grid.Width + 2, grid.Height + 2)
-    // Draw the border
     for x in 0 .. canvas.Height - 1 do
         canvas.SetPixel(0, x, Color.White).SetPixel(canvas.Width - 1, x, Color.White)
 
     for y in 0 .. canvas.Width - 1 do
         canvas.SetPixel(y, 0, Color.White).SetPixel(y, canvas.Height - 1, Color.White)
+
+    canvas
+
+let updateCanvas state (canvas: Canvas) (ctx:LiveDisplayContext) =
+    let { Snake = snake
+          Grid = grid
+          FoodPosition = foodPosition } =
+        state
+
+    for x in 0 .. grid.Width - 1 do
+        for y in 0 .. grid.Height - 1 do
+            canvas.SetPixel(x+1, y+1, Color.Black)
 
     // Draw the snake
     for pos in snake.Position do
@@ -157,10 +164,7 @@ let printState state =
 
     // Draw the food
     canvas.SetPixel(foodPosition.X + 1, foodPosition.Y + 1, Color.Red)
-
-    AnsiConsole.Write(canvas)
-    AnsiConsole.WriteLine()
-    AnsiConsole.Write "Enter direction (w/a/s/d) or 'q' to quit:"
+    ctx.Refresh()
 
 let checkKeyPress = Keyboard.IsKeyDown
 
@@ -170,9 +174,9 @@ let speedFactor state =
     | n when n < 10 -> 2.0
     | _ -> 3.0
 
-let rec gameLoop state =
-    Console.Clear()
-    printState state
+let rec gameLoop state canvas ctx =
+
+    updateCanvas state canvas ctx
 
     let startTime = DateTime.Now
     let mutable lastPressedKey = ConsoleKey.None
@@ -199,9 +203,9 @@ let rec gameLoop state =
 
         match newState with
         | None -> ()
-        | Some newState -> gameLoop newState
+        | Some newState -> gameLoop newState canvas ctx
     with ex ->
-        printfn "Error: %s" ex.Message
+        printfn "Error: %s\r\n%s" ex.Message ex.StackTrace
 
 let grid = { Width = 20; Height = 20 }
 
@@ -218,5 +222,6 @@ let initialState =
 [<EntryPoint>]
 [<STAThread>]
 let main _ =
-    gameLoop initialState
+    let canvas = initCanvas grid.Width grid.Height
+    AnsiConsole.Live(canvas).Start(fun ctx -> gameLoop initialState canvas ctx)
     0
