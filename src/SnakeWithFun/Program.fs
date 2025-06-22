@@ -203,7 +203,7 @@ let rec gameLoop state =
     with ex ->
         printfn "Error: %s" ex.Message
 
-let grid = { Width = 5; Height = 5 }
+let grid = { Width = 20; Height = 20 }
 
 let initialSnake =
     { Position = [ { X = 1; Y = 1 }; { X = 1; Y = 2 }; { X = 1; Y = 3 } ] }
