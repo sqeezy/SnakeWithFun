@@ -16,7 +16,8 @@ type GameState =
     { Snake: Snake
       Grid: Grid
       CurrentDirection: Direction
-      FoodPosition: Position }
+      FoodPosition: Position
+      Speed: float }
 
 type UserInput =
     | DirectionChange of Direction
@@ -134,21 +135,35 @@ let resolveMove state nextHead =
                 Snake = newSnake
                 FoodPosition = findNewFoodPosition newSnake state.Grid }
 
+let updateSpeed state =
+
+    let speedFactor state =
+        match state.Snake.Position.Length with
+        | n when n < 5 -> 1.0
+        | n when n < 10 -> 2.0
+        | _ -> 3.0
+
+    let speedFactor = speedFactor state
+    { state with Speed = speedFactor }
+
+
 let gameTick (state: GameState) (input: UserInput) =
-    state |> processUserInput input |> previewMove ||> resolveMove
+    state |> updateSpeed |> processUserInput input |> previewMove ||> resolveMove
 
 let initCanvas width height =
     let canvas = Canvas(width + 2, height + 2)
 
     for x in 0 .. canvas.Height - 1 do
         canvas.SetPixel(0, x, Color.White).SetPixel(canvas.Width - 1, x, Color.White)
+        |> ignore
 
     for y in 0 .. canvas.Width - 1 do
         canvas.SetPixel(y, 0, Color.White).SetPixel(y, canvas.Height - 1, Color.White)
+        |> ignore
 
     canvas
 
-let updateCanvas state (canvas: Canvas) (ctx:LiveDisplayContext) =
+let updateCanvas state (canvas: Canvas) (ctx: LiveDisplayContext) =
     let { Snake = snake
           Grid = grid
           FoodPosition = foodPosition } =
@@ -156,23 +171,17 @@ let updateCanvas state (canvas: Canvas) (ctx:LiveDisplayContext) =
 
     for x in 0 .. grid.Width - 1 do
         for y in 0 .. grid.Height - 1 do
-            canvas.SetPixel(x+1, y+1, Color.Black)
+            canvas.SetPixel(x + 1, y + 1, Color.Black) |> ignore
 
     // Draw the snake
     for pos in snake.Position do
-        canvas.SetPixel(pos.X + 1, pos.Y + 1, Color.Green)
+        canvas.SetPixel(pos.X + 1, pos.Y + 1, Color.Green) |> ignore
 
     // Draw the food
-    canvas.SetPixel(foodPosition.X + 1, foodPosition.Y + 1, Color.Red)
+    canvas.SetPixel(foodPosition.X + 1, foodPosition.Y + 1, Color.Red) |> ignore
     ctx.Refresh()
 
 let checkKeyPress = Keyboard.IsKeyDown
-
-let speedFactor state =
-    match state.Snake.Position.Length with
-    | n when n < 5 -> 1.0
-    | n when n < 10 -> 2.0
-    | _ -> 3.0
 
 let rec gameLoop state canvas ctx =
 
@@ -180,8 +189,8 @@ let rec gameLoop state canvas ctx =
 
     let startTime = DateTime.Now
     let mutable lastPressedKey = ConsoleKey.None
-    let baseSpeed = 250.0
-    let waitTime = baseSpeed * (1.0 / speedFactor state)
+    let baseSpeed = 200.0
+    let waitTime = baseSpeed * (1.0 / state.Speed)
 
     while (DateTime.Now - startTime).TotalMilliseconds < waitTime do
         System.Threading.Thread.Sleep(1)
@@ -216,7 +225,8 @@ let initialState =
     { Snake = initialSnake
       Grid = grid
       CurrentDirection = Right
-      FoodPosition = { X = 2; Y = 2 } }
+      FoodPosition = { X = 2; Y = 2 }
+      Speed = 1.0 }
 
 // we need sta thread here to use WPF input
 [<EntryPoint>]
