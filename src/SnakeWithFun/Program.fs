@@ -150,6 +150,9 @@ let updateSpeed state =
 let gameTick (state: GameState) (input: UserInput) =
     state |> updateSpeed |> processUserInput input |> previewMove ||> resolveMove
 
+type SpectreConsoleAppState =
+    { GameState: GameState; Canvas: Canvas }
+
 let initCanvas width height =
     let canvas = Canvas(width + 2, height + 2)
 
@@ -163,11 +166,19 @@ let initCanvas width height =
 
     canvas
 
-let updateCanvas state (canvas: Canvas) (ctx: LiveDisplayContext) =
+let initAppState gameState =
+    let canvas = initCanvas gameState.Grid.Width gameState.Grid.Height
+
+    { GameState = gameState
+      Canvas = canvas }
+
+let updateCanvas appState (ctx: LiveDisplayContext) =
     let { Snake = snake
           Grid = grid
           FoodPosition = foodPosition } =
-        state
+        appState.GameState
+
+    let canvas = appState.Canvas
 
     for x in 0 .. grid.Width - 1 do
         for y in 0 .. grid.Height - 1 do
@@ -181,16 +192,14 @@ let updateCanvas state (canvas: Canvas) (ctx: LiveDisplayContext) =
     canvas.SetPixel(foodPosition.X + 1, foodPosition.Y + 1, Color.Red) |> ignore
     ctx.Refresh()
 
-let checkKeyPress = Keyboard.IsKeyDown
+let rec gameLoop appState ctx =
 
-let rec gameLoop state canvas ctx =
-
-    updateCanvas state canvas ctx
+    updateCanvas appState ctx
 
     let startTime = DateTime.Now
     let mutable lastPressedKey = ConsoleKey.None
     let baseSpeed = 200.0
-    let waitTime = baseSpeed * (1.0 / state.Speed)
+    let waitTime = baseSpeed * (1.0 / appState.GameState.Speed)
 
     while (DateTime.Now - startTime).TotalMilliseconds < waitTime do
         System.Threading.Thread.Sleep(1)
@@ -208,11 +217,11 @@ let rec gameLoop state canvas ctx =
         | _ -> Idle
 
     try
-        let newState = gameTick state userInput
+        let newState = gameTick appState.GameState userInput
 
         match newState with
         | None -> ()
-        | Some newState -> gameLoop newState canvas ctx
+        | Some newState -> gameLoop { appState with GameState = newState } ctx
     with ex ->
         printfn "Error: %s\r\n%s" ex.Message ex.StackTrace
 
@@ -232,6 +241,7 @@ let initialState =
 [<EntryPoint>]
 [<STAThread>]
 let main _ =
-    let canvas = initCanvas grid.Width grid.Height
-    AnsiConsole.Live(canvas).Start(fun ctx -> gameLoop initialState canvas ctx)
+    let appState = initAppState initialState
+    AnsiConsole.Live(appState.Canvas).Start(fun ctx -> gameLoop appState ctx)
+
     0
