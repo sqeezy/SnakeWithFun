@@ -195,7 +195,9 @@ let updateCanvas appState =
             canvas.SetPixel(x + 1, y + 1, Color.Black) |> ignore
 
     // Draw the snake
-    for pos in snake.Position do
+    let head :: body = snake.Position
+    canvas.SetPixel(head.X + 1, head.Y + 1, Color.Yellow) |> ignore
+    for pos in body do
         canvas.SetPixel(pos.X + 1, pos.Y + 1, Color.Green) |> ignore
 
     // Draw the food
