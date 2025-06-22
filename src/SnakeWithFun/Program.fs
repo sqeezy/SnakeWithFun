@@ -1,5 +1,6 @@
 ﻿open System
 open System.Windows.Input
+open Spectre.Console
 
 type Position = { X: int; Y: int }
 type Snake = { Position: Position list }
@@ -136,37 +137,30 @@ let resolveMove state nextHead =
 let gameTick (state: GameState) (input: UserInput) =
     state |> processUserInput input |> previewMove ||> resolveMove
 
-let printState
-    { Snake = snake
-      Grid = grid
-      FoodPosition = foodPosition }
-    =
-    // print border around the grid
-    for _ in 0 .. grid.Width + 1 do
-        printf "-"
+let printState state =
+    let { Snake = snake
+          Grid = grid
+          FoodPosition = foodPosition } =
+        state
 
-    printfn ""
+    let canvas = Canvas(grid.Width + 2, grid.Height + 2)
+    // Draw the border
+    for x in 0 .. canvas.Height - 1 do
+        canvas.SetPixel(0, x, Color.White).SetPixel(canvas.Width - 1, x, Color.White)
 
-    // print the grid with the snake
-    for y in 0 .. grid.Height - 1 do
-        printf "|"
+    for y in 0 .. canvas.Width - 1 do
+        canvas.SetPixel(y, 0, Color.White).SetPixel(y, canvas.Height - 1, Color.White)
 
-        for x in 0 .. grid.Width - 1 do
-            if List.exists (fun pos -> pos.X = x && pos.Y = y) snake.Position then
-                printf "X"
-            elif x = snake.Position.Head.X && y = snake.Position.Head.Y then
-                printf "F"
-            elif x = foodPosition.X && y = foodPosition.Y then
-                printf "O"
-            else
-                printf " "
+    // Draw the snake
+    for pos in snake.Position do
+        canvas.SetPixel(pos.X + 1, pos.Y + 1, Color.Green)
 
-        printf "|"
-        printfn ""
+    // Draw the food
+    canvas.SetPixel(foodPosition.X + 1, foodPosition.Y + 1, Color.Red)
 
-    // print border around the grid
-    for _ in 0 .. grid.Width + 1 do
-        printf "-"
+    AnsiConsole.Write(canvas)
+    AnsiConsole.WriteLine()
+    AnsiConsole.Write "Enter direction (w/a/s/d) or 'q' to quit:"
 
 let checkKeyPress = Keyboard.IsKeyDown
 
@@ -179,8 +173,6 @@ let speedFactor state =
 let rec gameLoop state =
     Console.Clear()
     printState state
-    printfn ""
-    printfn "Enter direction (w/a/s/d) or 'q' to quit:"
 
     let startTime = DateTime.Now
     let mutable lastPressedKey = ConsoleKey.None
