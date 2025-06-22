@@ -170,6 +170,12 @@ let printState
 
 let checkKeyPress = Keyboard.IsKeyDown
 
+let speedFactor state =
+    match state.Snake.Position.Length with
+    | n when n < 5 -> 1.0
+    | n when n < 10 -> 2.0
+    | _ -> 3.0
+
 let rec gameLoop state =
     Console.Clear()
     printState state
@@ -178,8 +184,10 @@ let rec gameLoop state =
 
     let startTime = DateTime.Now
     let mutable lastPressedKey = ConsoleKey.None
-    // while 250 milliseconds have not passed
-    while (DateTime.Now - startTime).TotalMilliseconds < 250 do
+    let baseSpeed = 250.0
+    let waitTime = baseSpeed * (1.0 / speedFactor state)
+
+    while (DateTime.Now - startTime).TotalMilliseconds < waitTime do
         System.Threading.Thread.Sleep(1)
 
         if Console.KeyAvailable then
