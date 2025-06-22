@@ -59,6 +59,22 @@ let findNewFoodPosition (snake: Snake) (grid: Grid) =
     let randomIndex = random.Next(availablePositions.Length)
     availablePositions[randomIndex]
 
+type MoveResult =
+    | SnakeMoved of Position
+    | SnakeEatenFood of Position
+    | Collision
+
+let calculateMoveResult (state: GameState) (newHead: Position) =
+    let snake = state.Snake
+
+    // Check if the new head position collides with the snake's body
+    if List.exists (fun pos -> pos = newHead) snake.Position then
+        Collision
+    else if newHead = state.FoodPosition then
+        SnakeEatenFood newHead
+    else
+        SnakeMoved newHead
+
 let gameTick (state: GameState) (input: UserInput) =
     let newDirection =
         match input with
@@ -69,31 +85,41 @@ let gameTick (state: GameState) (input: UserInput) =
     let snake = state.Snake
     let head = List.head snake.Position
 
-    let newHead =
+    let nextHead =
         match newDirection with
         | Up -> { X = head.X; Y = head.Y - 1 }
         | Down -> { X = head.X; Y = head.Y + 1 }
         | Left -> { X = head.X - 1; Y = head.Y }
         | Right -> { X = head.X + 1; Y = head.Y }
 
-    let eatingManipulation, newFoodPosition =
-        if newHead = state.FoodPosition then
-            // If the snake eats food, increase its length
-            (0, findNewFoodPosition snake state.Grid)
-        else
-            // If not eating, remove the tail segment
-            (1, state.FoodPosition)
+    let moveResult = calculateMoveResult state nextHead
 
-    let newPosition =
-        newHead :: List.take (snake.Position.Length - eatingManipulation) snake.Position
-        |> List.map (fun pos -> wrappedPositionUpdate pos state.Grid)
+    let updatePositions snake grid nextHead foodWasEaten =
+        let eatingManipulation = if foodWasEaten then 0 else 1
 
-    let newSnake = { snake with Position = newPosition }
+        nextHead
+        :: List.take (snake.Position.Length - eatingManipulation) snake.Position
+        |> List.map (fun pos -> wrappedPositionUpdate pos grid)
 
-    { state with
-        Snake = newSnake
-        CurrentDirection = newDirection
-        FoodPosition = newFoodPosition }
+    match moveResult with
+    | Collision -> None
+    | SnakeMoved nextHead ->
+        let newPosition = updatePositions snake state.Grid nextHead false
+        let newSnake = { snake with Position = newPosition }
+
+        { state with
+            Snake = newSnake
+            CurrentDirection = newDirection }
+        |> Some
+    | SnakeEatenFood nextHead ->
+        let newPosition = updatePositions snake state.Grid nextHead true
+        let newSnake = { snake with Position = newPosition }
+
+        { state with
+            Snake = newSnake
+            CurrentDirection = newDirection
+            FoodPosition = findNewFoodPosition newSnake state.Grid }
+        |> Some
 
 let printState
     { Snake = snake
@@ -155,8 +181,9 @@ let rec gameLoop state =
     try
         let newState = gameTick state userInput
 
-        if userInput <> Quit then
-            gameLoop newState
+        match newState with
+        | None -> ()
+        | Some newState -> gameLoop newState
     with ex ->
         printfn "Error: %s" ex.Message
 
