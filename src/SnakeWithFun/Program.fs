@@ -11,13 +11,18 @@ type SpectreConsoleAppState =
 let initCanvas width height =
     let canvas = Canvas(width + 2, height + 2)
 
-    for x in 0 .. canvas.Height - 1 do
-        canvas.SetPixel(0, x, Color.White).SetPixel(canvas.Width - 1, x, Color.White)
-        |> ignore
+    let borderCoordinates =
+        seq {
+            for x in 0 .. width + 1 do
+                yield (x, 0)
+                yield (x, height + 1)
 
-    for y in 0 .. canvas.Width - 1 do
-        canvas.SetPixel(y, 0, Color.White).SetPixel(y, canvas.Height - 1, Color.White)
-        |> ignore
+            for y in 0 .. height + 1 do
+                yield (0, y)
+                yield (width + 1, y)
+        }
+
+    Seq.iter (fun (x, y) -> canvas.SetPixel(x, y, Color.White) |> ignore) borderCoordinates
 
     canvas
 
