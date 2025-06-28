@@ -2,11 +2,13 @@
 open Spectre.Console
 open SnakeWithFun.Model
 open SnakeWithFun.Logic
+open SnakeWithFun.KeyboardInput
 
 type SpectreConsoleAppState =
     { GameState: GameState
       Canvas: Canvas
-      GuiRoot: Layout }
+      GuiRoot: Layout
+      KeyPressHandler: KeyPressHandler }
 
 let initCanvas width height =
     let canvas = Canvas(width + 2, height + 2)
@@ -34,9 +36,13 @@ let initAppState gameState =
 
     guiRoot["Top"].Update(canvas) |> ignore
 
+    let keyPressHandler = KeyPressHandler()
+    keyPressHandler.StartMonitoring()
+
     { GameState = gameState
       Canvas = canvas
-      GuiRoot = guiRoot }
+      GuiRoot = guiRoot
+      KeyPressHandler = keyPressHandler }
 
 let updateCanvas appState =
     let { Snake = snake
@@ -90,10 +96,13 @@ let readUserInput appState =
     let waitTime = baseSpeed * (1.0 / appState.GameState.Speed)
 
     while (DateTime.Now - startTime).TotalMilliseconds < waitTime do
-        System.Threading.Thread.Sleep(1)
+        Threading.Thread.Yield()
+        // if Console.KeyAvailable then
+        //     lastPressedKey <- Console.ReadKey(true).Key
 
-        if Console.KeyAvailable then
-            lastPressedKey <- Console.ReadKey(true).Key
+    if appState.KeyPressHandler.LastPressedKey.IsSome then
+        lastPressedKey <- appState.KeyPressHandler.LastPressedKey.Value.Key
+        appState.KeyPressHandler.ClearLastKey()
 
     let userInput =
         match lastPressedKey with
@@ -130,6 +139,8 @@ let initialState =
       CurrentDirection = Right
       FoodPosition = findNewFoodPosition initialSnake grid
       Speed = 1.0 }
+
+
 
 // we need sta thread here to use WPF input
 [<EntryPoint>]
