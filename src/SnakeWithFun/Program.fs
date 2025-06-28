@@ -52,16 +52,25 @@ let updateCanvas appState =
 
     let canvas = appState.Canvas
 
-    for x in 0 .. grid.Width - 1 do
-        for y in 0 .. grid.Height - 1 do
-            canvas.SetPixel(x + 1, y + 1, Color.Black) |> ignore
+    // Clear the grid using sequence expressions
+    let gridPositions =
+        seq {
+            for x in 0 .. grid.Width - 1 do
+                for y in 0 .. grid.Height - 1 do
+                    yield (x + 1, y + 1)
+        }
+
+    gridPositions
+    |> Seq.iter (fun (x, y) -> canvas.SetPixel(x, y, Color.Black) |> ignore)
 
     // Draw the snake
-    let head :: body = snake.Position
-    canvas.SetPixel(head.X + 1, head.Y + 1, Color.Yellow) |> ignore
+    match snake.Position with
+    | head :: body ->
+        canvas.SetPixel(head.X + 1, head.Y + 1, Color.Yellow) |> ignore
 
-    for pos in body do
-        canvas.SetPixel(pos.X + 1, pos.Y + 1, Color.Green) |> ignore
+        body
+        |> List.iter (fun pos -> canvas.SetPixel(pos.X + 1, pos.Y + 1, Color.Green) |> ignore)
+    | [] -> () // Should never happen in a valid game state
 
     // Draw the food
     canvas.SetPixel(foodPosition.X + 1, foodPosition.Y + 1, Color.Red) |> ignore
@@ -91,29 +100,27 @@ let updateGui appState (ctx: LiveDisplayContext) =
 
 let readUserInput appState =
     let startTime = DateTime.Now
-    let mutable lastPressedKey = ConsoleKey.None
     let baseSpeed = 200.0
     let waitTime = baseSpeed * (1.0 / appState.GameState.Speed)
 
     while (DateTime.Now - startTime).TotalMilliseconds < waitTime do
-        Threading.Thread.Yield()
-        // if Console.KeyAvailable then
-        //     lastPressedKey <- Console.ReadKey(true).Key
+        Threading.Thread.Yield() |> ignore
 
-    if appState.KeyPressHandler.LastPressedKey.IsSome then
-        lastPressedKey <- appState.KeyPressHandler.LastPressedKey.Value.Key
-        appState.KeyPressHandler.ClearLastKey()
+    let lastPressedKey =
+        if appState.KeyPressHandler.LastPressedKey.IsSome then
+            let key = appState.KeyPressHandler.LastPressedKey.Value.Key
+            appState.KeyPressHandler.ClearLastKey()
+            key
+        else
+            ConsoleKey.None
 
-    let userInput =
-        match lastPressedKey with
-        | ConsoleKey.W -> DirectionChange Up
-        | ConsoleKey.S -> DirectionChange Down
-        | ConsoleKey.A -> DirectionChange Left
-        | ConsoleKey.D -> DirectionChange Right
-        | ConsoleKey.Q -> Quit
-        | _ -> Idle
-
-    userInput
+    match lastPressedKey with
+    | ConsoleKey.W -> DirectionChange Up
+    | ConsoleKey.S -> DirectionChange Down
+    | ConsoleKey.A -> DirectionChange Left
+    | ConsoleKey.D -> DirectionChange Right
+    | ConsoleKey.Q -> Quit
+    | _ -> Idle
 
 
 let rec gameLoop appState ctx =
@@ -122,11 +129,12 @@ let rec gameLoop appState ctx =
 
     let userInput = readUserInput appState
 
-    let newState = gameTick appState.GameState userInput
+    let gameEvent = gameTick appState.GameState userInput
 
-    match newState with
-    | None -> ()
-    | Some newState -> gameLoop { appState with GameState = newState } ctx
+    match gameEvent with
+    | GameOver -> ()
+    | GameQuit -> ()
+    | GameContinues newState -> gameLoop { appState with GameState = newState } ctx
 
 let grid = { Width = 20; Height = 20 }
 

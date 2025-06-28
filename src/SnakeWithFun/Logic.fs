@@ -45,8 +45,11 @@ let findNewFoodPosition (snake: Snake) (grid: Grid) =
 let calculateMoveResult (state: GameState) (newHead: Position) =
     let snake = state.Snake
 
+    let snakeBodySet =
+        snake.Position |> List.take (snake.Position.Length - 1) |> Set.ofList
+
     // Check if the new head position collides with the snake's body
-    if List.exists (fun pos -> pos = newHead) (snake.Position |> List.take (snake.Position.Length - 1)) then
+    if Set.contains newHead snakeBodySet then
         Collision
     else if newHead = state.FoodPosition then
         SnakeEatenFood newHead
@@ -65,7 +68,7 @@ let processUserInput userInput state =
         match userInput with
         | DirectionChange dir -> updatedDirection state.CurrentDirection dir
         | Idle -> state.CurrentDirection
-        | Quit -> failwith "Game Over"
+        | Quit -> state.CurrentDirection // Handle quit at higher level
 
     { state with
         CurrentDirection = newDirection }
@@ -87,22 +90,19 @@ let previewMove state =
 let resolveMove state nextHead =
     let moveResult = calculateMoveResult state nextHead
 
+    let updateSnakePosition foodWasEaten =
+        let newPosition = updatePositions state.Snake state.Grid nextHead foodWasEaten
+
+        { state.Snake with
+            Position = newPosition }
+
     match moveResult with
     | Collision -> None
-    | SnakeMoved nextHead ->
-        let newPosition = updatePositions state.Snake state.Grid nextHead false
-
-        let newSnake =
-            { state.Snake with
-                Position = newPosition }
-
+    | SnakeMoved _ ->
+        let newSnake = updateSnakePosition false
         Some { state with Snake = newSnake }
-    | SnakeEatenFood nextHead ->
-        let newPosition = updatePositions state.Snake state.Grid nextHead true
-
-        let newSnake =
-            { state.Snake with
-                Position = newPosition }
+    | SnakeEatenFood _ ->
+        let newSnake = updateSnakePosition true
 
         Some
             { state with
@@ -122,4 +122,12 @@ let updateSpeed state =
 
 
 let gameTick (state: GameState) (input: UserInput) =
-    state |> updateSpeed |> processUserInput input |> previewMove ||> resolveMove
+    match input with
+    | Quit -> GameQuit
+    | _ ->
+        let updatedState = state |> updateSpeed |> processUserInput input
+        let (previewState, nextHead) = previewMove updatedState
+
+        match resolveMove previewState nextHead with
+        | Some newState -> GameContinues newState
+        | None -> GameOver

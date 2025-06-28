@@ -28,3 +28,8 @@ type MoveResult =
     | SnakeEatenFood of Position
     | Collision
 
+type GameEvent =
+    | GameContinues of GameState
+    | GameOver
+    | GameQuit
+
